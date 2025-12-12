@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b6349b4f-5d6b-4f77-970e-8969749a4780" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<os:object-store name="status_object_store" doc:name="Object store" doc:id="81af8c86-e584-4e1a-ac2e-5276cea4c275" entryTtl="20" entryTtlUnit="DAYS" expirationInterval="2" />
+	<flow name="mule-video12-objectstoreFlow" doc:id="4ec663e0-1490-46b0-a511-16620d356a2f" >
+		<http:listener doc:name="Listener" doc:id="b8b15af4-9169-4c0c-9858-0e63c13ad107" config-ref="HTTP_Listener_config" path="objectstore"/>
+		<logger level="INFO" doc:name="Logger" doc:id="de3d1452-a274-4da5-ad80-90aec4854979" message="payload is #[payload] and corelationid is #[correlationId]"/>
+		<os:retrieve doc:name="Retrieve " doc:id="d3d01e55-056f-493d-a25c-43f4212691b4" key="status" objectStore="status_object_store">
+			<os:default-value ><![CDATA[#["Not_Running"]]]></os:default-value>
+		</os:retrieve>
+		<logger level="INFO" doc:name="Logger" doc:id="1ad39104-1981-4e5b-b951-1e44fb74e8a1" message="payload after retrieve is #[payload]"/>
+		<choice doc:name="Choice" doc:id="2264ce19-46a2-4fa5-b490-73083f163f45" >
+			<when expression='#[payload=="Not Running"]'>
+				<os:store doc:name="Store" doc:id="b6a36e3d-4c7d-42d4-9beb-26aaab381832" key="status" objectStore="status_object_store">
+					<os:value><![CDATA[#["Running"]]]></os:value>
+				</os:store>
+				<ee:transform doc:name="Transform Message" doc:id="b0041a31-c003-4af5-a61f-86c0259acc48" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::Runtime
+output application/java
+---
+payload wait 60000]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<os:store doc:name="Store" doc:id="3ebabc6b-e9d3-46a3-a4ec-9822c34325af" key="status" objectStore="status_object_store">
+					<os:value ><![CDATA[#["Not_Running"]]]></os:value>
+				</os:store>
+				<ee:transform doc:name="Transform Message" doc:id="ec1bc159-cab9-490d-a918-87a0e3ed85e7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Result": "Request Processed"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="deae7d82-e658-4352-a8b3-ed1cb37fed86">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Result": "Request Rejected there is another request under execution"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
