@@ -56,6 +56,7 @@ output application/json
 }]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="88e12971-af25-43f7-9898-2d9a21feba8e" />
 			</otherwise>
 		</choice>
 	</flow>
